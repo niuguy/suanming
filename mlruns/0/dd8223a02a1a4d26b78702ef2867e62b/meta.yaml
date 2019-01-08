@@ -1,0 +1,14 @@
+artifact_uri: /Users/wang/Work/suanming/mlruns/0/dd8223a02a1a4d26b78702ef2867e62b/artifacts
+end_time: 1545928720958
+entry_point_name: ''
+experiment_id: 0
+lifecycle_stage: active
+name: ''
+run_uuid: dd8223a02a1a4d26b78702ef2867e62b
+source_name: /Users/wang/Work/suanming/proc2vec.py
+source_type: 4
+source_version: ''
+start_time: 1545928689109
+status: 3
+tags: []
+user_id: wang

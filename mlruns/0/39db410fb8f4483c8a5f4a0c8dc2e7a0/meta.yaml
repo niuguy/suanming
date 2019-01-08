@@ -1,0 +1,14 @@
+artifact_uri: /Users/wang/Work/suanming/mlruns/0/39db410fb8f4483c8a5f4a0c8dc2e7a0/artifacts
+end_time: 1544887739108
+entry_point_name: ''
+experiment_id: 0
+lifecycle_stage: active
+name: ''
+run_uuid: 39db410fb8f4483c8a5f4a0c8dc2e7a0
+source_name: /Users/wang/Work/suanming/mlflow_episode_dtoc.py
+source_type: 4
+source_version: ''
+start_time: 1544887729636
+status: 4
+tags: []
+user_id: wang

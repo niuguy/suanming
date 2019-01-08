@@ -1,0 +1,14 @@
+artifact_uri: /Users/wang/Work/suanming/mlruns/0/4c991d602a104f8da197791f8d716135/artifacts
+end_time: 1544877306317
+entry_point_name: ''
+experiment_id: 0
+lifecycle_stage: active
+name: ''
+run_uuid: 4c991d602a104f8da197791f8d716135
+source_name: /Users/wang/Work/suanming/diag2vec.py
+source_type: 4
+source_version: ''
+start_time: 1544877229110
+status: 3
+tags: []
+user_id: wang

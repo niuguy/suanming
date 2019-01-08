@@ -1,0 +1,14 @@
+artifact_uri: /Users/wang/Work/suanming/mlruns/0/9c7ff872273e49cf8a029c97fcec3e97/artifacts
+end_time: 1544441190227
+entry_point_name: ''
+experiment_id: 0
+lifecycle_stage: active
+name: ''
+run_uuid: 9c7ff872273e49cf8a029c97fcec3e97
+source_name: /Users/wang/Work/suanming/mlflow_spell.py
+source_type: 4
+source_version: ''
+start_time: 1544441190222
+status: 4
+tags: []
+user_id: wang
