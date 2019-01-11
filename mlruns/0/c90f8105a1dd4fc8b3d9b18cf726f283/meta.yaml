@@ -1,0 +1,14 @@
+artifact_uri: /Users/wang/Work/suanming/mlruns/0/c90f8105a1dd4fc8b3d9b18cf726f283/artifacts
+end_time: 1547068558352
+entry_point_name: ''
+experiment_id: 0
+lifecycle_stage: active
+name: ''
+run_uuid: c90f8105a1dd4fc8b3d9b18cf726f283
+source_name: /Users/wang/Work/suanming/deep_episode_dtoc.py
+source_type: 4
+source_version: ''
+start_time: 1547068558327
+status: 3
+tags: []
+user_id: wang

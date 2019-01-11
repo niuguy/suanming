@@ -25,7 +25,7 @@ from dataset import dtoc
 from keras.callbacks import TensorBoard
 import mlflow
 from mlflow import log_metric
-from sklearn.metrics import accuracy_score, recall_score, confusion_matrix, roc_curve, auc
+from sklearn.metrics import precision_score,accuracy_score, recall_score, confusion_matrix, roc_curve, auc
 import diag2vec
 import _pickle as pickle
 from sklearn.ensemble import RandomForestRegressor
@@ -150,7 +150,7 @@ def model_CNN(dim, emb_dim):
     model.add(Conv1D(128, 3,
                  activation='relu',
                  input_shape=(dim, emb_dim)))
-    # model.add(Conv1D(64, 3, activation='relu'))
+    model.add(Conv1D(64, 3, activation='relu'))
     model.add(Flatten())
     model.add(Dense(64, activation='relu'))
     model.add(Dropout(0.5)) ## To be discussed
@@ -184,7 +184,7 @@ def plot_roc(fpr, tpr):
 
 
 
-def run_model(model, train_X, train_y, val_X, val_y, bsize, eps, pred_threhold):
+def run_model(model, train_X, train_y, val_X, val_y, bsize, eps, pred_threhold, model_type, embed_dim):
 
     tbCallBack = TensorBoard(log_dir='./Graph', histogram_freq=0, write_graph=True, write_images=True)
     model.fit(train_X, train_y, batch_size=bsize, epochs=eps, validation_data = (val_X, val_y), callbacks=[tbCallBack])
@@ -195,8 +195,10 @@ def run_model(model, train_X, train_y, val_X, val_y, bsize, eps, pred_threhold):
 
     ## save for later illustrating
     roc_result = pd.DataFrame(dict(fpr=fpr, tpr=tpr, thresholds = thresholds))
-    pickle.dump(roc_result, open('dataset/roc_CNN_150_1L.pkl', 'wb'), -1)
+    # pickle.dump(roc_result, open('dataset/roc_CNN_100.pkl', 'wb'), -1)
+
     
+    prec = precision_score(val_y, predict_val_y)
     acc = accuracy_score(val_y, predict_val_y)
     recall = recall_score(val_y, predict_val_y)
     f1 = metrics.f1_score(val_y, predict_val_y)
@@ -206,7 +208,7 @@ def run_model(model, train_X, train_y, val_X, val_y, bsize, eps, pred_threhold):
       % (metrics.classification_report(val_y, predict_val_y)))
     print("Confusion matrix:\n%s" % metrics.confusion_matrix(val_y, predict_val_y))
 
-    return acc,recall,f1, roc_auc
+    return prec,acc,recall,f1, roc_auc, roc_result
     
 
 
@@ -220,7 +222,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_batch_size", help="Training Batch Size", nargs='?', action='store', default=1024, type=int)
     parser.add_argument("--epochs", help="Number of epochs for training", nargs='?', action='store', default=20, type=int)
     parser.add_argument("--embed_model", help="the embedding model used, 0 for cbow, 1 for skip-gram", nargs='?', action='store', default=1, type=int)
-    parser.add_argument("--emb_dim", help="Embedding dimension", nargs='?', action='store', default=150, type=int)
+    parser.add_argument("--emb_dim", help="Embedding dimension", nargs='?', action='store', default=200, type=int)
     parser.add_argument("--emb_type", help="signle-embedding(s) or meta-embedding(m)", nargs='?', action='store', default='m', type=str)
 
     args = parser.parse_args()
@@ -254,7 +256,11 @@ if __name__ == "__main__":
         input_emb_dim = train_X.shape[2]
         model = build_model(model_type, input_dim, input_emb_dim)
 
-        acc,recall,f1, roc_auc= run_model(model,train_X,train_y,validate_X,validate_y,batch_size,epochs, pred_threhold)
+        prec,acc,recall,f1, roc_auc, roc_result= run_model(model,train_X,train_y,validate_X,validate_y,batch_size,epochs, pred_threhold,model_type, embed_dim)
+
+        roc_file_name = 'dataset/roc_'+ str(model_type)+"_"+str(embed_dim)+".pkl"
+        pickle.dump(roc_result, open(roc_file_name, 'wb'), -1)
+
 
         mlflow.log_param("model_type", model_type)
         mlflow.log_param("pred_threhold", pred_threhold)
@@ -264,10 +270,12 @@ if __name__ == "__main__":
         mlflow.log_param("input_emb_dim", input_emb_dim)
         mlflow.log_param("batch_size", batch_size)
         mlflow.log_param("epochs", epochs)
+        mlflow.log_metric("prec", prec)
         mlflow.log_metric("acc", acc)
         mlflow.log_metric("recall", recall)
         mlflow.log_metric("f1", f1)
         mlflow.log_metric("roc_auc", roc_auc)
+        mlflow.log_artifact(roc_file_name)
 
     timed = time.time() - start_time
     print("This model took", timed, "seconds to train and test.")

@@ -7,6 +7,7 @@ from gensim.models import Word2Vec
 from  dataset import dtoc
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
+import pandas as pd
 
 
 def padding_single(value, dim, do_norm=True):
@@ -27,14 +28,16 @@ def one_hot_transform(df, dim):
     rst = rst.reshape(len(df),1,dim)
     return rst
 
-def one_hot_transform_single(df, dim):
-    df=df.reshape(-1,1)
+def one_hot_transform_single(df, dim=150):
+    df = df.fillna('')
+    df=df.values.reshape(-1,1)
     enc = OneHotEncoder(handle_unknown='ignore')
     vectors =  enc.fit_transform(df).toarray()
-    rst = np.zeros((len(df),dim))
-    rst[:,:vectors.shape[1]] = vectors
-    rst = rst.reshape(len(df),1,dim)
-    return rst
+
+    # rst = np.zeros((len(df),dim))
+    # rst[:,:vectors.shape[1]] = vectors
+    # rst = rst.reshape(len(df),1,dim)
+    return vectors
 
 def one_hot_transform_trick(df, dim):
     df=df.reshape(-1,1)
@@ -99,8 +102,6 @@ def embed_transfer_dtoc(data_file, emb_model, emb_dim, emb_type):
     # Diagnose embedding
     df_diags = df[['diag_hist1','diag_hist2','diag_hist3','diag_hist4','diag_hist5','diag2','diag3','diag4','diag5','diag6', 
     'diag7', 'diag8', 'diag9','diag10', 'diag11', 'diag12']]
-    # df_diags = df[[diag1','diag2','diag3','diag4','diag5','diag6', 
-    # 'diag7', 'diag8', 'diag9','diag10', 'diag11', 'diag12']]
     if emb_type=='m':
         emb_file_seqs = "models/seq2vec_"+str(emb_model)+"_"+str(emb_dim)+".pkl"
         wv_model_seqs = Word2Vec.load(emb_file_seqs)
@@ -138,6 +139,31 @@ def embed_transfer_dtoc(data_file, emb_model, emb_dim, emb_type):
     pickle.dump(df_y, open('dataset/embeds/dtoc_y_emb_' + str(features_num)+"_"+str(emb_model)+"_"+str(emb_dim)+"_"+str(emb_type)+".pkl", 'wb'), -1)
     return  df_X, df_y
 
+def one_hot_dtoc(data_file):
+     ## data_file: the dataset to be embeded 
+    df = dtoc.load_data(data_file)
+    df = df.fillna('')
+    le = LabelEncoder()
+    print(le.fit_transform(df[['diag_hist1','diag_hist2']]))
+    # df_X = one_hot_transform_single(df['diag_hist1'])
+    # print(df_X.shape)
+    # print(pd.get_dummies(df[['diag_hist1','diag_hist2','diag_hist3','diag_hist4','diag_hist5']].values))
+
+def normal_hist_diags(data_file):
+    df = dtoc.load_data(data_file)
+    def get_first(x):
+        if isinstance(x, np.ndarray):
+            return x[0]
+        return x
+    df['diag_hist1'] = df['diag_hist1'].apply(lambda x:get_first(x))
+    df['diag_hist2'] = df['diag_hist2'].apply(lambda x:get_first(x))
+    df['diag_hist3'] = df['diag_hist3'].apply(lambda x:get_first(x))
+    df['diag_hist4'] = df['diag_hist4'].apply(lambda x:get_first(x))
+    df['diag_hist5'] = df['diag_hist5'].apply(lambda x:get_first(x))
+
+    pickle.dump(df, open('dataset/dtoc_sample_40000_new.pkl', 'wb'), -1)
+
+    print(df.head(10))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -163,5 +189,7 @@ if __name__ == "__main__":
     # emb_file_seqs = "models/seq2vec_1_200.pkl"
     # wv_model_seqs = Word2Vec.load(emb_file_seqs)
     # print(wv_model_seqs.wv.vocab)
+    # one_hot_dtoc(data_file)
+    # normal_hist_diags(data_file)
 
 

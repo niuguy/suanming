@@ -1,0 +1,14 @@
+artifact_uri: /Users/wang/Work/suanming/mlruns/0/66feae0cdfc145508a61c3157dca2ce7/artifacts
+end_time: 1547121980441
+entry_point_name: ''
+experiment_id: 0
+lifecycle_stage: active
+name: ''
+run_uuid: 66feae0cdfc145508a61c3157dca2ce7
+source_name: /Users/wang/Work/suanming/convention_episode_dtoc.py
+source_type: 4
+source_version: ''
+start_time: 1547121980415
+status: 3
+tags: []
+user_id: wang
