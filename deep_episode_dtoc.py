@@ -150,7 +150,8 @@ def model_CNN(dim, emb_dim):
     model.add(Conv1D(128, 3,
                  activation='relu',
                  input_shape=(dim, emb_dim)))
-    model.add(Conv1D(64, 3, activation='relu'))
+    # model.add(Conv1D(64, 3, activation='relu'))
+    model.add(MaxPool1D())
     model.add(Flatten())
     model.add(Dense(64, activation='relu'))
     model.add(Dropout(0.5)) ## To be discussed
@@ -189,15 +190,19 @@ def run_model(model, train_X, train_y, val_X, val_y, bsize, eps, pred_threhold, 
     tbCallBack = TensorBoard(log_dir='./Graph', histogram_freq=0, write_graph=True, write_images=True)
     model.fit(train_X, train_y, batch_size=bsize, epochs=eps, validation_data = (val_X, val_y), callbacks=[tbCallBack])
 
+    model_json = model.to_json()
+    # with open("models/model.json", "w") as json_file: json_file.write(model_json)
+    # model.save("models/model.h5")
+    # print("Saved model to disk")
+
+
     predict_val_origin_y = model.predict(val_X, batch_size=bsize, verbose=1)
     predict_val_y = (predict_val_origin_y>0.5).astype(int)
     fpr, tpr, thresholds = metrics.roc_curve(val_y, predict_val_origin_y, pos_label=1)
 
-    ## save for later illustrating
-    roc_result = pd.DataFrame(dict(fpr=fpr, tpr=tpr, thresholds = thresholds))
-    # pickle.dump(roc_result, open('dataset/roc_CNN_100.pkl', 'wb'), -1)
 
-    
+    ## save for later illustrating
+    roc_result = pd.DataFrame(dict(fpr=fpr, tpr=tpr, thresholds = thresholds))    
     prec = precision_score(val_y, predict_val_y)
     acc = accuracy_score(val_y, predict_val_y)
     recall = recall_score(val_y, predict_val_y)
@@ -210,6 +215,8 @@ def run_model(model, train_X, train_y, val_X, val_y, bsize, eps, pred_threhold, 
 
     return prec,acc,recall,f1, roc_auc, roc_result
     
+def predict_one_record(model, input_X):
+    return model.predict(input_X)
 
 
 if __name__ == "__main__":
@@ -222,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_batch_size", help="Training Batch Size", nargs='?', action='store', default=1024, type=int)
     parser.add_argument("--epochs", help="Number of epochs for training", nargs='?', action='store', default=20, type=int)
     parser.add_argument("--embed_model", help="the embedding model used, 0 for cbow, 1 for skip-gram", nargs='?', action='store', default=1, type=int)
-    parser.add_argument("--emb_dim", help="Embedding dimension", nargs='?', action='store', default=200, type=int)
+    parser.add_argument("--emb_dim", help="Embedding dimension", nargs='?', action='store', default=50, type=int)
     parser.add_argument("--emb_type", help="signle-embedding(s) or meta-embedding(m)", nargs='?', action='store', default='m', type=str)
 
     args = parser.parse_args()
@@ -253,7 +260,7 @@ if __name__ == "__main__":
         train_X,validate_X,train_y, validate_y= train_test_split(dtoc_X_emb, dtoc_y_emb, test_size=0.08, random_state=2018)
  
         input_dim = train_X.shape[1]
-        input_emb_dim = train_X.shape[2]
+        input_emb_dim = embed_dim
         model = build_model(model_type, input_dim, input_emb_dim)
 
         prec,acc,recall,f1, roc_auc, roc_result= run_model(model,train_X,train_y,validate_X,validate_y,batch_size,epochs, pred_threhold,model_type, embed_dim)

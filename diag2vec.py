@@ -76,10 +76,10 @@ def evaluate_embeddings():
 def train(model_type, dim):
     start_time = time.time()
     with mlflow.start_run():
-        # dataset = generate_training_dataset(filename = 'dataset/dtoc_proc.pkl')
-        dataset = generate_training_dataset_from_sequence()
-        # artifact_name = "models/diag2vec_" + str(model_type) + "_" + str(dim) + ".pkl"
-        artifact_name = "models/seq2vec_" + str(model_type) + "_" + str(dim) + ".pkl"
+        dataset = generate_training_dataset(filename = 'dataset/dtoc_proc.pkl')
+        # dataset = generate_training_dataset_from_sequence()
+        artifact_name = "models/diag2vec_" + str(model_type) + "_" + str(dim) + ".pkl"
+        # artifact_name = "models/seq2vec_" + str(model_type) + "_" + str(dim) + ".pkl"
         model = train_word2vec(dataset, model_type, size=dim)
         model.save(artifact_name)
         mlflow.log_param("model_type", model_type)
@@ -92,7 +92,7 @@ def train(model_type, dim):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_type", help="Choose from CBOW(0),Skip-Gram(1)", action = 'store', default=1, type = str)
-    parser.add_argument("--dim", help="Embedding dimension", nargs='?', action='store', default=100, type=float)
+    parser.add_argument("--dim", help="Embedding dimension", nargs='?', action='store', default=50, type=float)
 
     args = parser.parse_args()
     model_type = args.model_type

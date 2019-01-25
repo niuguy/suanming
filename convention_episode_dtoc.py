@@ -18,6 +18,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn import svm
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score
+from sklearn.linear_model import LogisticRegression
 
 
 def get_svm():
@@ -29,7 +30,8 @@ def get_randomforest():
     return clf
 
 def get_LR():
-    clf =  LinearRegression()
+    # clf =  LinearRegression()
+    clf =  LogisticRegression()
     return clf 
 
 def get_classifier(cl_type):
