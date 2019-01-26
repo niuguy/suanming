@@ -93,32 +93,44 @@ def esemble_vectorization(df, wv_model_intra, wv_model_seq, emb_dim):
     print('the count of common vectors of the two datasets is:', common_vector_count)
     return embeds_array
 
-def embed_transfer_dtoc(data_file, emb_model, emb_dim, emb_type):
-    ## data_file: the dataset to be embeded 
-    df = dtoc.load_data(data_file)
-    emb_file_diags = "models/diag2vec_"+str(emb_model)+"_"+str(emb_dim)+".pkl"
-    wv_model_diags = Word2Vec.load(emb_file_diags)
 
-    # Diagnose embedding
-    # df_diags = df[['diag_hist1','diag_hist2','diag_hist3','diag_hist4','diag_hist5']]
-    df_diags = df[['diag_hist1','diag_hist2','diag_hist3','diag_hist4','diag_hist5','diag2','diag3','diag4','diag5','diag6', 
+def embed_X(df_in, wv_model_diags,wv_model_seqs , emb_type = 'm'):
+    df_diags = df_in[['diag_hist1','diag_hist2','diag_hist3','diag_hist4','diag_hist5','diag2','diag3','diag4','diag5','diag6', 
     'diag7', 'diag8', 'diag9','diag10', 'diag11', 'diag12']]
     if emb_type=='m':
-        emb_file_seqs = "models/seq2vec_"+str(emb_model)+"_"+str(emb_dim)+".pkl"
-        wv_model_seqs = Word2Vec.load(emb_file_seqs)
         df_diags_vec = esemble_vectorization(df_diags, wv_model_diags,wv_model_seqs, emb_dim)
     else:
         df_diags_vec = vectorization(df_diags, wv_model_diags, emb_dim)
-
-    
-    # demographic embedding
-    #[ 'age', 'adm_code', 'gender','adm_month','is_oversea','dest_code']
     df_X = df_diags_vec
     for col in [ 'age', 'adm_code', 'gender','adm_month','is_oversea','dest_code']:
-        df_other = df[col].fillna('')
+        df_other = df_in[col].fillna('')
         df_other_vec = one_hot_transform_trick(np.array(df_other), emb_dim)
         df_X = np.concatenate((df_X,df_other_vec), axis = 1)
-        
+    return df_X
+
+def embed_for_predict():
+    # This is a general example for prediction, the emb_model should not be loaded each time if making it as a server
+    df_in = pd.DataFrame(columns=['diag_hist1','diag_hist2','diag_hist3','diag_hist4','diag_hist5','diag2','diag3','diag4','diag5','diag6', 
+    'diag7', 'diag8', 'diag9','diag10', 'diag11', 'diag12', 'age', 'adm_code', 'gender','adm_month','is_oversea','dest_code'])
+    emb_file_diags = "models/diag2vec_1_150.pkl"
+    emb_file_seqs = "models/seq2vec_1_150.pkl"
+    wv_model_seqs = Word2Vec.load(emb_file_seqs)
+    wv_model_diags = Word2Vec.load(emb_file_diags)
+    df_X = embed_X(df_in, wv_model_diags,wv_model_seqs)
+    return df_X
+
+
+
+
+def embed_for_train(data_file, emb_model, emb_dim, emb_type):
+    ## data_file: the dataset to be embeded 
+    df = dtoc.load_data(data_file)
+    emb_file_diags = "models/diag2vec_"+str(emb_model)+"_"+str(emb_dim)+".pkl"
+    emb_file_seqs = "models/seq2vec_"+str(emb_model)+"_"+str(emb_dim)+".pkl"
+    wv_model_seqs = Word2Vec.load(emb_file_seqs)
+    wv_model_diags = Word2Vec.load(emb_file_diags)
+    df_X = embed_X(df, wv_model_diags, wv_model_seqs, emb_type)
+    
     # procedure codes embedding
     # emb_file_procs = "models/proc2vec_"+str(emb_model)+"_"+str(emb_dim)+".pkl"
     # wv_model_procs = Word2Vec.load(emb_file_procs)
@@ -134,7 +146,6 @@ def embed_transfer_dtoc(data_file, emb_model, emb_dim, emb_type):
     features_num = df_X.shape[1]
     
     df_y = df['is_dtoc'].values
-
 
     pickle.dump(df_X, open('dataset/embeds/dtoc_X_emb_' + str(features_num)+"_"+str(emb_model)+"_"+str(emb_dim)+"_"+str(emb_type)+".pkl", 'wb'), -1)
     pickle.dump(df_y, open('dataset/embeds/dtoc_y_emb_' + str(features_num)+"_"+str(emb_model)+"_"+str(emb_dim)+"_"+str(emb_type)+".pkl", 'wb'), -1)
@@ -202,7 +213,7 @@ if __name__ == "__main__":
     print('emb_model:', emb_model)
     print('emb_dim:', emb_dim)
     print('emb_type:', emb_type)
-    embed_transfer_dtoc(data_file, emb_model, emb_dim, emb_type)
+    embed_for_train(data_file, emb_model, emb_dim, emb_type)
     # emb_file_seqs = "models/seq2vec_1_200.pkl"
     # wv_model_seqs = Word2Vec.load(emb_file_seqs)
     # print(wv_model_seqs.wv.vocab)
