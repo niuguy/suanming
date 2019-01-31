@@ -119,9 +119,6 @@ def embed_for_predict():
     df_X = embed_X(df_in, wv_model_diags,wv_model_seqs)
     return df_X
 
-
-
-
 def embed_for_train(data_file, emb_model, emb_dim, emb_type):
     ## data_file: the dataset to be embeded 
     df = dtoc.load_data(data_file)

@@ -190,9 +190,9 @@ def run_model(model, train_X, train_y, val_X, val_y, bsize, eps, pred_threhold, 
     tbCallBack = TensorBoard(log_dir='./Graph', histogram_freq=0, write_graph=True, write_images=True)
     model.fit(train_X, train_y, batch_size=bsize, epochs=eps, validation_data = (val_X, val_y), callbacks=[tbCallBack])
 
-    model_json = model.to_json()
+    # model_json = model.to_json()
     # with open("models/model.json", "w") as json_file: json_file.write(model_json)
-    # model.save("models/model.h5")
+    model.save("models/deep_pred_model.h5")
     # print("Saved model to disk")
 
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_batch_size", help="Training Batch Size", nargs='?', action='store', default=1024, type=int)
     parser.add_argument("--epochs", help="Number of epochs for training", nargs='?', action='store', default=20, type=int)
     parser.add_argument("--embed_model", help="the embedding model used, 0 for cbow, 1 for skip-gram", nargs='?', action='store', default=1, type=int)
-    parser.add_argument("--emb_dim", help="Embedding dimension", nargs='?', action='store', default=50, type=int)
+    parser.add_argument("--emb_dim", help="Embedding dimension", nargs='?', action='store', default=150, type=int)
     parser.add_argument("--emb_type", help="signle-embedding(s) or meta-embedding(m)", nargs='?', action='store', default='m', type=str)
 
     args = parser.parse_args()
