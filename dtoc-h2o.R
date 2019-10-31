@@ -52,7 +52,7 @@ non_dtoc_sps<-
   group_by(id) %>% 
   arrange(start_date) %>%
   summarise(is_dtoc=max(is_dtoc),sp_no=last(sp_no), age=last(age),start_date=last(start_date), dest_code=last(dest_code)) %>% 
-  sample_n(26811)
+  sample_n(234450)
 
 
 gen_hist_diags <- function(eds, cur_sps, hist_num = 5) {
@@ -60,7 +60,7 @@ gen_hist_diags <- function(eds, cur_sps, hist_num = 5) {
   # cur_sps   the ongoing spells (1 spell = 1 admission) 
   # hist_num the number of history sps to be selected
   
-  hist_diags <- eds_r %>% filter(id %in% cur_sps$id & !sp_no %in% cur_sps) %>% 
+  hist_diags <- eds_r %>% filter(id %in% cur_sps$id & !sp_no %in% cur_sps$sp_no) %>% 
     #arrange(desc(ep_no)) %>%
     group_by(sp_no) %>% 
     arrange(desc(start_date)) %>%
@@ -73,28 +73,29 @@ gen_hist_diags <- function(eds, cur_sps, hist_num = 5) {
   hist_diags
 }
 
+# Merge with original ones
 dtoc_hist_diags <- gen_hist_diags(eds_r, dtoc_sps)
 
 dtoc_sps_full <- left_join(dtoc_sps, dtoc_hist_diags, by='id')
+
+# remove sps with no history
+dtoc_sps_full <- as.data.frame(dtoc_sps_full) %>% filter(!is.na(diag_hist) & diag_hist!="") 
+
 
 non_dtoc_hist_diags <- gen_hist_diags(eds_r, non_dtoc_sps)
 
 non_dtoc_sps_full <- left_join(non_dtoc_sps, non_dtoc_hist_diags, by='id')
 
+non_dtoc_sps_full <- as.data.frame(non_dtoc_sps_full) %>%  filter(!is.na(diag_hist) & diag_hist!="")
 
-sps_full <- rbind(dtoc_sps_full,non_dtoc_sps_full) %>% sample_n(nrow(sps_full)) 
+sps_full_small <- sps_full
+
+sps_full <- rbind(dtoc_sps_full,non_dtoc_sps_full) 
+
+sps_full <- sps_full %>% sample_n(nrow(sps_full))
 
 
-eds_r %>% filter(id %in% non_dtoc_sps$id & !sp_no %in% non_dtoc_sps) %>% 
-  #arrange(desc(ep_no)) %>%
-  group_by(sp_no) %>% 
-  arrange(desc(start_date)) %>%
- # distinct(id) %>%
-  summarise(id = last(id), diag_last = last(diag1), start_date = last(start_date)) %>%
-  group_by(id) %>%
-  top_n(5, wt=start_date) %>%
-  summarise(diag_hist = paste(diag_last,collapse =',')) 
-
+#embedding and create train dataset
 
 sps_full_h2o <- as.h2o(sps_full)
 
@@ -112,7 +113,6 @@ diags.data$is_dtoc <- as.factor(diags.data$is_dtoc)
 
 diags.data.split <- h2o.splitFrame(diags.data, ratios = 0.8)
 
-print("Build a basic GBM model")
 
 h_train <- diags.data.split[[1]]
 
@@ -165,3 +165,5 @@ aml <- h2o.automl(x = features, y = target,
 
 yhat_test <- h2o.predict(aml@leader, newdata = h_test)
 
+
+dtoc_hist_diags
