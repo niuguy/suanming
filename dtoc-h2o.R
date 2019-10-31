@@ -96,4 +96,72 @@ eds_r %>% filter(id %in% non_dtoc_sps$id & !sp_no %in% non_dtoc_sps) %>%
   summarise(diag_hist = paste(diag_last,collapse =',')) 
 
 
+sps_full_h2o <- as.h2o(sps_full)
+
+sps_full_h2o$age <- sps_full_h2o$age /100
+
+sps_full_h2o$dest_code <- sps_full_h2o$dest_code / 100
+
+spell.hist.diags.token <- h2o.tokenize(sps_full_h2o$diag_hist,",")
+
+spel.hist.diags.vecs <- h2o.transform(diag2v.model, spell.hist.diags.token, aggregate_method = "AVERAGE")
+
+diags.data <- h2o.cbind(sps_full_h2o[c('is_dtoc','age','dest_code')], spel.hist.diags.vecs)
+
+diags.data$is_dtoc <- as.factor(diags.data$is_dtoc)
+
+diags.data.split <- h2o.splitFrame(diags.data, ratios = 0.8)
+
+print("Build a basic GBM model")
+
+h_train <- diags.data.split[[1]]
+
+h_test <- diags.data.split[[2]]
+
+
+
+
+### Build Other Baseline Models (DRF, GBM, DNN & XGB)
+n_seed <- 12345
+
+features <- c(names(spel.hist.diags.vecs), 'age', 'dest_code')
+target <- 'is_dtoc'
+
+# Baseline Distributed Random Forest (DRF)
+model_drf <- h2o.randomForest(x = features,
+                              y = target,
+                              training_frame = h_train,
+                              model_id = "baseline_drf",
+                              nfolds = 5,
+                              seed = n_seed)
+
+# Baseline Gradient Boosting Model (GBM)
+model_gbm <- h2o.gbm(x = features,
+                     y = target,
+                     training_frame = h_train,
+                     model_id = "baseline_gbm",
+                     nfolds = 5,
+                     seed = n_seed)
+
+# Baseline Deep Nerual Network (DNN)
+# By default, DNN is not reproducible with multi-core. You may get slightly different results here.
+# You can enable the `reproducible` option but it will run on a single core (very slow).
+model_dnn <- h2o.deeplearning(x = features, 
+                              y = target, 
+                              training_frame = h_train,
+                              model_id = "baseline_dnn", 
+                              nfolds = 5, 
+                              seed = n_seed)
+
+
+h2o.performance(model_gbm, newdata = h_test)
+
+## Automl
+
+aml <- h2o.automl(x = features, y = target,
+                  training_frame = h_train,
+                  max_models = 20,
+                  seed = 1)
+
+yhat_test <- h2o.predict(aml@leader, newdata = h_test)
 
