@@ -1,0 +1,112 @@
+---
+title: "dtoc_visualization"
+author: "Tianfeng"
+date: "01/11/2019"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+## Import data
+
+
+
+```{r}
+eds_r <- read.csv('/home/jupyter/rich/dtoc_los.csv')
+
+eds_r <- eds_r %>%  filter(!is.na(diag1) & diag1!="")
+dtoc_sps <- 
+  eds_r %>% 
+  filter(is_dtoc==1) %>% 
+  group_by(id) %>% 
+  arrange(start_date) %>%
+  summarise(is_dtoc=max(is_dtoc),sp_no=last(sp_no), age=last(age),start_date=last(start_date),
+             dest_code=last(dest_code),los=last(los), diag1=last(diag1))
+
+
+ndtoc_sps<- 
+  eds_r %>% 
+  filter(is_dtoc==0) %>% 
+  group_by(id) %>% 
+  arrange(start_date) %>%
+  summarise(is_dtoc=max(is_dtoc),sp_no=last(sp_no), age=last(age),start_date=last(start_date),los=last(los),diag1=last(diag1), dest_code=last(dest_code))
+```
+
+## Date distribution
+
+```{r}
+dtoc_sps <- dtoc_sps %>% mutate(month=factor(month(dtoc_sps$start_date)))
+
+ggplot(dtoc_sps,aes(x=month))+ stat_count()
+  
+```
+
+
+## Age distribution
+
+```{r}
+```
+
+
+```{r}
+ggplot(dtoc_sps,aes(x=age))+ geom_histogram()
+```
+
+```{r}
+ggplot(ndtoc_sps,aes(x=age))+ geom_histogram()
+
+```
+
+## Dest_code distribution
+
+
+```{r}
+ggplot(dtoc_sps,aes(x=factor(dest_code)))+ stat_count()
+
+```
+
+## Length of stay
+
+```{r}
+dtoc_sps %>% filter(los <100 & los >=0) %>% ggplot(aes(x=los))+ geom_histogram(binwidth = 1) 
+```
+```{r}
+ndtoc_sps %>% filter(los <100 & los >=0) %>% ggplot(aes(x=los))+ geom_histogram() 
+
+```
+
+
+
+## Diagnose distribution
+```{r dtoc_sps, include=TRUE}
+dtoc_diags_count <- dtoc_sps %>% group_by(diag1) %>% tally() %>% arrange(desc(n))  %>% mutate(dtoc=1)
+
+
+dtoc_top_50 <- dtoc_diags_count %>% top_n(50)
+
+ggplot(top_50, aes(x=diag1, y = n))+ geom_point()
+
+```
+```{r}
+ndtoc_diags_count <- ndtoc_sps %>% group_by(diag1) %>% tally() %>% arrange(desc(n)) %>% mutate(dtoc=0)
+
+ndtoc_top_50 <- ndtoc_diags_count %>% top_n(50)
+
+
+```
+
+
+```{r}
+
+ggplot(ndtoc_diags_count %>% top_n(20), aes(x=diag1, y = n))+ geom_point()
+
+```
+```{r}
+ggplot(dtoc_diags_count %>% top_n(20), aes(x=diag1, y = n))+ geom_point()
+
+```
+

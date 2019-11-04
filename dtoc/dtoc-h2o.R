@@ -3,27 +3,7 @@ h2o.init()
 library(tidyverse)
 
 
-# import data
-eds <- h2o.importFile('/home/jupyter/rich/dtoc_los.csv')
 
-diags <- h2o.importFile('/home/jupyter/rich/diags.csv') 
-
-diags$x <- as.character(diags$x)
-
-# Tokenize 
-diags.token <- h2o.tokenize(diags$x," ")
-
-# Build word2vec model
-diag2v.model <- h2o.word2vec(diags.token, sent_sample_rate = 0, epochs = 10)
-
-# Sanity check
-h2o.findSynonyms(diag2v.model, "Z349", count=5)
-
-# Calculate the vector of each row 
-diags.vecs <- h2o.transform(diag2v.model, diags$x, aggregate_method = "AVERAGE")
-
-
-####
 # preparing traing dataset
 
 # 1. dtoc instances
@@ -32,10 +12,8 @@ eds_r <- read.csv('/home/jupyter/rich/dtoc_los.csv')
 eds_r <- eds_r %>%  filter(!is.na(diag1) & diag1!="")
 
 # The patient ids which have dtoc records
-dtoc_ids <- eds_r %>% filter(is_dtoc==1) %>% .$id %>% unique()
 
-non_dtoc_ids <- eds_r %>% filter(is_dtoc==0) %>% .$id %>% unique()
-
+NDTOC_SAMPLES <- 50000
 
 # The spell records that have dtoc
 dtoc_sps <- 
@@ -46,20 +24,21 @@ dtoc_sps <-
   summarise(is_dtoc=max(is_dtoc),sp_no=last(sp_no), age=last(age),start_date=last(start_date), dest_code=last(dest_code))
 
 # The spell records that don't have dtoc
-non_dtoc_sps<- 
+ndtoc_sps<- 
   eds_r %>% 
   filter(is_dtoc==0) %>% 
   group_by(id) %>% 
   arrange(start_date) %>%
   summarise(is_dtoc=max(is_dtoc),sp_no=last(sp_no), age=last(age),start_date=last(start_date), dest_code=last(dest_code)) %>% 
-  sample_n(234450)
+  sample_n(NDTOC_SAMPLES)
 
 
-gen_hist_diags <- function(eds, cur_sps, hist_num = 5) {
+add_hist_diags <- function(eds, cur_sps, hist_num = 5) {
   # eds  the whole episodes dataset
   # cur_sps   the ongoing spells (1 spell = 1 admission) 
   # hist_num the number of history sps to be selected
   
+  # find history diags
   hist_diags <- eds_r %>% filter(id %in% cur_sps$id & !sp_no %in% cur_sps$sp_no) %>% 
     #arrange(desc(ep_no)) %>%
     group_by(sp_no) %>% 
@@ -69,62 +48,58 @@ gen_hist_diags <- function(eds, cur_sps, hist_num = 5) {
     group_by(id) %>%
     top_n(hist_num, wt=start_date) %>%
     summarise(diag_hist = paste(diag_last,collapse =',')) 
-  
-  hist_diags
+  # Join current spells with history diags
+  sps_full <- left_join(cur_sps, hist_diags, by='id')
+  ## remove rows which have not history diags
+  sps_full <- as.data.frame(sps_full) %>% filter(!is.na(diag_hist) & diag_hist!="") 
+  sps_full
 }
 
 # Merge with original ones
-dtoc_hist_diags <- gen_hist_diags(eds_r, dtoc_sps)
+dtoc_sps_full <- add_hist_diags(eds_r, dtoc_sps)
 
-dtoc_sps_full <- left_join(dtoc_sps, dtoc_hist_diags, by='id')
+ndtoc_sps_full <- add_hist_diags(eds_r, ndtoc_sps)
 
-# remove sps with no history
-dtoc_sps_full <- as.data.frame(dtoc_sps_full) %>% filter(!is.na(diag_hist) & diag_hist!="") 
-
-
-non_dtoc_hist_diags <- gen_hist_diags(eds_r, non_dtoc_sps)
-
-non_dtoc_sps_full <- left_join(non_dtoc_sps, non_dtoc_hist_diags, by='id')
-
-non_dtoc_sps_full <- as.data.frame(non_dtoc_sps_full) %>%  filter(!is.na(diag_hist) & diag_hist!="")
-
-sps_full_small <- sps_full
-
-sps_full <- rbind(dtoc_sps_full,non_dtoc_sps_full) 
+## merge and shuffle
+sps_full <- rbind(dtoc_sps_full,ndtoc_sps_full) 
 
 sps_full <- sps_full %>% sample_n(nrow(sps_full))
 
+sps_full <- as.h2o(sps_full)
 
 #embedding and create train dataset
 
-sps_full_h2o <- as.h2o(sps_full)
+diag2v.model <- h2o.loadModel("/home/jupyter/work/suanming/Word2Vec_model_R_1572604381765_1")
 
-sps_full_h2o$age <- sps_full_h2o$age /100
+do_encoding <- function(sps, diag2v.model){
+  
+  sps$age <- sps$age /100
+  
+  sps$dest_code <- sps$dest_code / 100
+  
+  diags.token <- h2o.tokenize(sps$diag_hist,",")
+  
+  diags.vecs <- h2o.transform(diag2v.model, diags.token, aggregate_method = "AVERAGE")
+  
+  data <- h2o.cbind(sps[c('is_dtoc','age','dest_code')], diags.vecs)
+  
+  data$is_dtoc <- as.factor(data$is_dtoc)
+  data
+}
 
-sps_full_h2o$dest_code <- sps_full_h2o$dest_code / 100
+sps_full <- do_encoding(sps_full, diag2v.model)
 
-spell.hist.diags.token <- h2o.tokenize(sps_full_h2o$diag_hist,",")
+#### Training
 
-spel.hist.diags.vecs <- h2o.transform(diag2v.model, spell.hist.diags.token, aggregate_method = "AVERAGE")
+# Train test split
+sps.split <- h2o.splitFrame(sps_full, ratios = 0.8)
 
-diags.data <- h2o.cbind(sps_full_h2o[c('is_dtoc','age','dest_code')], spel.hist.diags.vecs)
+h_train <- sps.split[[1]]
 
-diags.data$is_dtoc <- as.factor(diags.data$is_dtoc)
+h_test <- sps.split[[2]]
 
-diags.data.split <- h2o.splitFrame(diags.data, ratios = 0.8)
-
-
-h_train <- diags.data.split[[1]]
-
-h_test <- diags.data.split[[2]]
-
-
-
-
-### Build Other Baseline Models (DRF, GBM, DNN & XGB)
 n_seed <- 12345
-
-features <- c(names(spel.hist.diags.vecs), 'age', 'dest_code')
+features <- c(names(sps_full[,2:103]))
 target <- 'is_dtoc'
 
 # Baseline Distributed Random Forest (DRF)
@@ -153,7 +128,7 @@ model_dnn <- h2o.deeplearning(x = features,
                               nfolds = 5, 
                               seed = n_seed)
 
-
+# predict on test
 h2o.performance(model_gbm, newdata = h_test)
 
 ## Automl
@@ -165,5 +140,5 @@ aml <- h2o.automl(x = features, y = target,
 
 yhat_test <- h2o.predict(aml@leader, newdata = h_test)
 
+aml@leader@model$cross_validation_metrics
 
-dtoc_hist_diags
