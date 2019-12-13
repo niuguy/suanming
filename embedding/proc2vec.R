@@ -13,3 +13,4 @@ diags.token <- h2o.tokenize(diags$x," ")
 diag2v.model <- h2o.word2vec(diags.token, sent_sample_rate = 0, epochs = 10)
 
 model_path <- h2o.saveModel(diag2v.model,path=getwd(), force=TRUE)
+

@@ -13,7 +13,7 @@ eds_r <- eds_r %>%  filter(!is.na(diag1) & diag1!="")
 
 # The patient ids which have dtoc records
 
-NDTOC_SAMPLES <- 50000
+NDTOC_SAMPLES <- 10000
 
 # The spell records that have dtoc
 dtoc_sps <- 
@@ -102,6 +102,14 @@ n_seed <- 12345
 features <- c(names(sps_full[,2:103]))
 target <- 'is_dtoc'
 
+# Baseline Gradient Boosting Model (GBM)
+model_gbm <- h2o.gbm(x = features,
+                     y = target,
+                     training_frame = h_train,
+                     model_id = "baseline_gbm",
+                     nfolds = 5,
+                     seed = n_seed)
+
 # Baseline Distributed Random Forest (DRF)
 model_drf <- h2o.randomForest(x = features,
                               y = target,
@@ -110,13 +118,7 @@ model_drf <- h2o.randomForest(x = features,
                               nfolds = 5,
                               seed = n_seed)
 
-# Baseline Gradient Boosting Model (GBM)
-model_gbm <- h2o.gbm(x = features,
-                     y = target,
-                     training_frame = h_train,
-                     model_id = "baseline_gbm",
-                     nfolds = 5,
-                     seed = n_seed)
+
 
 # Baseline Deep Nerual Network (DNN)
 # By default, DNN is not reproducible with multi-core. You may get slightly different results here.
